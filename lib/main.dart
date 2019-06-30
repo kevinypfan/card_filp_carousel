@@ -1,10 +1,12 @@
+import 'dart:ui' as prefix0;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart';
 
 void main() {
-  debugPaintSizeEnabled = true;
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+  // debugPaintSizeEnabled = true;
+  // SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
   runApp(MyApp());
 }
 
@@ -46,8 +48,8 @@ class _MyHomePageState extends State<MyHomePage> {
           // Cards
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: CardFlipper(),
             ),
           ),
           // Bottom Bar
@@ -57,6 +59,113 @@ class _MyHomePageState extends State<MyHomePage> {
             color: Colors.grey,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CardFlipper extends StatefulWidget {
+  @override
+  _CardFlipperState createState() => _CardFlipperState();
+}
+
+class _CardFlipperState extends State<CardFlipper>
+    with TickerProviderStateMixin {
+  double scrollPercent = 0.0;
+  Offset startDrag;
+  double startDragPercentScroll;
+  double finishScrollStart;
+  double finishScrollEnd;
+  AnimationController finishScrollController;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    finishScrollController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    )..addListener(() {
+        setState(() {
+          scrollPercent = prefix0.lerpDouble(
+              finishScrollStart, finishScrollEnd, finishScrollController.value);
+        });
+      });
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    finishScrollController.dispose();
+    super.dispose();
+  }
+
+  void _onHorizontalDragStart(DragStartDetails details) {
+    startDrag = details.globalPosition;
+    startDragPercentScroll = scrollPercent;
+  }
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    final currDrag = details.globalPosition;
+    final dragDistance = currDrag.dx - startDrag.dx;
+    final singleCardDragPercent = dragDistance / context.size.width;
+    // print('=======');
+    // print('scrollPercent = $scrollPercent');
+    // print('=======');
+    // print('startDragPercentScroll = $startDragPercentScroll');
+    // print('=======');
+    // print('finishScrollStart = $finishScrollStart');
+    // print('=======');
+    // print('finishScrollEnd = $finishScrollEnd');
+    // print('=======');
+
+    setState(() {
+      scrollPercent = (startDragPercentScroll + (-singleCardDragPercent / 3))
+          .clamp(0.0, 1.0 - (1 / 3));
+    });
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    final numCards = 3;
+    finishScrollStart = scrollPercent;
+    finishScrollEnd = (scrollPercent * numCards).round() / numCards;
+    finishScrollController.forward(from: 0);
+
+    setState(() {
+      startDrag = null;
+      startDragPercentScroll = null;
+    });
+  }
+
+  List<Widget> _buildCards() {
+    return [
+      _buildCard(0, 3, scrollPercent),
+      _buildCard(1, 3, scrollPercent),
+      _buildCard(2, 3, scrollPercent),
+    ];
+  }
+
+  Widget _buildCard(int cardIndex, int cardCount, double scrollPercent) {
+    final cardScrollPercent = scrollPercent / (1 / cardCount);
+
+    return FractionalTranslation(
+        translation: Offset(cardIndex - cardScrollPercent, 0.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Card(),
+        ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragStart: _onHorizontalDragStart,
+      onHorizontalDragUpdate: _onHorizontalDragUpdate,
+      onHorizontalDragEnd: _onHorizontalDragEnd,
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        children: _buildCards(),
       ),
     );
   }
